@@ -20,5 +20,6 @@ html, body {
 }
 
 svg {
-  width: 80%;
+  max-width: 80%;
+  max-height: 90%;
 }
