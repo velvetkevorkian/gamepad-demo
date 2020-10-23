@@ -1,57 +1,52 @@
 import { h } from 'preact'
-import { useEffect } from 'preact/hooks'
+import { useEffect, useState, useRef } from 'preact/hooks'
 import Gamepad from './gamepad'
 
-const buttonMap = {
-  0: 'a',
-  1: 'b',
-  2: 'x',
-  3: 'y',
-  4: 'lb',
-  5: 'rb',
-  6: 'lt',
-  7: 'rt',
-  8: 'back',
-  9: 'start',
-  10: 'ls',
-  11: 'rs',
-  12: 'up',
-  13: 'down',
-  14: 'left',
-  15: 'right',
-}
+const buttons = ['a', 'b', 'x', 'y', 'lb', 'rb', 'lt', 'rt', 'back', 'start', 'ls', 'rs', 'up', 'down', 'left', 'right']
+const buttonMap = {}
+buttons.forEach((b, i) => buttonMap[i] = b)
 
 const App = () => {
-  let connectedPad
+  let connectedPad = useRef()
+  let gamepadStateRef = useRef()
+  const [gamepadState, setGamepadState] = useState(null)
+
+  useEffect(() => {
+    const initialGamepadState = {}
+    buttons.forEach((b) => initialGamepadState[b] = false)
+    gamepadStateRef.current = initialGamepadState
+
+    addEventListener('gamepadconnected', handleGamepadConnected)
+    return (() => removeEventListener('gamepadconnected', handleGamepadConnected))
+  }, [])
 
   function handleGamepadConnected(event) {
     window.removeEventListener('gamepadconnected', handleGamepadConnected)
-    connectedPad = event.gamepad
-    console.log(`gamepad with id ${connectedPad.id} and ${connectedPad.buttons.length} buttons connected`)
+    connectedPad.current = event.gamepad
     requestAnimationFrame(poll)
   }
 
   function poll() {
-    const pressedButtons = connectedPad.buttons.map((button, i) => {
+    const newState = {}
+    let stateHasChanged = false
+    connectedPad.current.buttons.forEach((button, i) => {
+      const buttonName = buttonMap[i]
+      if (!buttonName) return
       const { pressed } = button
-      return {i, pressed}
-    }).filter(button => button.pressed)
+      newState[buttonName] = pressed
+      if (gamepadStateRef.current[buttonName] !== pressed) stateHasChanged = true
+    })
 
-    if (pressedButtons.length > 0) {
-      pressedButtons.forEach(button => console.log(`${buttonMap[button.i]} pressed`))
+    if(stateHasChanged) {
+      gamepadStateRef.current = newState
+      setGamepadState(() => newState)
     }
     requestAnimationFrame(poll)
   }
 
-
-  useEffect(() => {
-    addEventListener('gamepadconnected', handleGamepadConnected)
-    return (() => removeEventListener('gamepadconnected', handleGamepadConnected))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   return (
     <div id="app">
-      <Gamepad />
+      <Gamepad gamepadState={gamepadState} />
     </div>
   )
 }
